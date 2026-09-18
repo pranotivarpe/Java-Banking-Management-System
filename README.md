@@ -94,6 +94,23 @@ java -jar target/banking-management-system-0.1.0.jar
 
 ---
 
+## Running Tests
+
+```bash
+mvn test
+```
+
+- **Unit tests** (`AccountServiceImplTest`) mock the repository layer with Mockito — no database needed.
+- **Integration tests** (`AccountServiceIntegrationTest`) use [Testcontainers](https://testcontainers.com/) to run
+  the full Spring context against a real, throwaway MySQL container via Docker — not an in-memory substitute.
+
+> **Docker on macOS via Colima:** Testcontainers' Ryuk cleanup sidecar can fail to start under Colima's Docker
+> socket. If integration tests fail with a `ContainerLaunchException` for `testcontainers/ryuk`, run with
+> `TESTCONTAINERS_RYUK_DISABLED=true mvn test` (containers still stop on a normal JVM shutdown; this only disables
+> the crash-safety net). Not needed on Docker Desktop or in CI.
+
+---
+
 ## Menu Options
 
 ```
