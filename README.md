@@ -3,6 +3,7 @@
 ![Java](https://img.shields.io/badge/Java-17-ED8B00?style=flat-square&logo=openjdk&logoColor=white)
 ![Spring Boot](https://img.shields.io/badge/Spring%20Boot-3.5-6DB33F?style=flat-square&logo=springboot&logoColor=white)
 ![Spring Data JPA](https://img.shields.io/badge/Spring%20Data%20JPA-6DB33F?style=flat-square&logo=spring&logoColor=white)
+![Spring Security](https://img.shields.io/badge/Spring%20Security-6DB33F?style=flat-square&logo=springsecurity&logoColor=white)
 ![MySQL](https://img.shields.io/badge/MySQL-Database-4479A1?style=flat-square&logo=mysql&logoColor=white)
 ![Maven](https://img.shields.io/badge/Maven-Build-C71A36?style=flat-square&logo=apachemaven&logoColor=white)
 
@@ -19,6 +20,7 @@ A **console-based Banking Management System** built on Spring Boot and Spring Da
 - 📋 **Transaction History** — View past transactions, most recent first
 - ✏️ **Profile Management** — Update name, address, or contact number
 - ❌ **Account Closure**
+- 🔐 **PIN Security** — BCrypt-hashed 4-digit PIN required for every account operation, with account lockout after 3 failed attempts
 
 ---
 
@@ -29,6 +31,7 @@ A **console-based Banking Management System** built on Spring Boot and Spring Da
 | Java 17 | Core application language |
 | Spring Boot 3.5 | Dependency injection, application bootstrap |
 | Spring Data JPA / Hibernate | ORM — object-relational mapping to MySQL |
+| Spring Security Crypto | BCrypt password hashing for account PINs |
 | MySQL | Persistent data storage |
 | Maven | Build and dependency management |
 
@@ -43,6 +46,7 @@ com.pranotivarpe.bankingsystem/
 ├── model/         Customer, Account, Transaction (JPA entities) + enums
 ├── repository/    Spring Data JPA repositories (no hand-written SQL)
 ├── service/       Business logic — validation, transactions, exceptions
+├── security/      BCrypt PasswordEncoder configuration
 ├── exception/     Custom domain exceptions
 └── console/       CommandLineRunner-driven menu, isolated from business logic
 ```

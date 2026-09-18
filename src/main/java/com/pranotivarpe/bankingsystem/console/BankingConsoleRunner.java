@@ -90,8 +90,10 @@ public class BankingConsoleRunner implements CommandLineRunner {
             default -> throw new InvalidAmountException("Invalid account type choice!");
         };
 
+        String pin = readNewPin();
+
         Account account = accountService.createAccount(
-                new CreateAccountRequest(bank, firstName, lastName, dob, address, contactNum, accountType));
+                new CreateAccountRequest(bank, firstName, lastName, dob, address, contactNum, accountType, pin));
 
         System.out.println("Account created successfully!");
         printAccountSummary(account);
@@ -101,6 +103,7 @@ public class BankingConsoleRunner implements CommandLineRunner {
         System.out.println("1. Deposit  2. Withdraw");
         int choice = readInt("Choice: ");
         int accountNumber = readInt("Account number: ");
+        accountService.authenticate(accountNumber, readPin());
         BigDecimal amount = readAmount("Amount: ");
 
         Account account = switch (choice) {
@@ -114,6 +117,7 @@ public class BankingConsoleRunner implements CommandLineRunner {
 
     private void viewTransactionHistory() {
         int accountNumber = readInt("Account number: ");
+        accountService.authenticate(accountNumber, readPin());
         List<Transaction> history = accountService.getTransactionHistory(accountNumber);
 
         if (history.isEmpty()) {
@@ -131,6 +135,7 @@ public class BankingConsoleRunner implements CommandLineRunner {
 
     private void updatePersonalInfo() {
         int accountNumber = readInt("Account number: ");
+        accountService.authenticate(accountNumber, readPin());
         System.out.println("1. First Name  2. Last Name  3. Address  4. Contact Number");
         int choice = readInt("Choice: ");
 
@@ -146,6 +151,7 @@ public class BankingConsoleRunner implements CommandLineRunner {
 
     private void closeAccount() {
         int accountNumber = readInt("Account number: ");
+        accountService.authenticate(accountNumber, readPin());
         accountService.closeAccount(accountNumber);
         System.out.println("Account closed successfully!");
     }
@@ -199,6 +205,26 @@ public class BankingConsoleRunner implements CommandLineRunner {
     private String readLine(String prompt) {
         System.out.print(prompt);
         return sc.nextLine().trim();
+    }
+
+    private String readPin() {
+        return readLine("PIN: ");
+    }
+
+    private String readNewPin() {
+        while (true) {
+            String pin = readLine("Choose a 4-digit PIN: ");
+            if (!pin.matches("\\d{4}")) {
+                System.out.println("PIN must be exactly 4 digits.");
+                continue;
+            }
+            String confirm = readLine("Confirm PIN: ");
+            if (!pin.equals(confirm)) {
+                System.out.println("PINs do not match, try again.");
+                continue;
+            }
+            return pin;
+        }
     }
 
     private LocalDate readDob(String prompt) {

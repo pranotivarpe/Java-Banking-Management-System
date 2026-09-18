@@ -1,9 +1,11 @@
 package com.pranotivarpe.bankingsystem.service;
 
+import com.pranotivarpe.bankingsystem.exception.AccountLockedException;
 import com.pranotivarpe.bankingsystem.exception.AccountNotFoundException;
 import com.pranotivarpe.bankingsystem.exception.InsufficientFundsException;
 import com.pranotivarpe.bankingsystem.exception.InvalidAccountDataException;
 import com.pranotivarpe.bankingsystem.exception.InvalidAmountException;
+import com.pranotivarpe.bankingsystem.exception.InvalidPinException;
 import com.pranotivarpe.bankingsystem.exception.MinimumBalanceViolationException;
 import com.pranotivarpe.bankingsystem.model.Account;
 import com.pranotivarpe.bankingsystem.model.AccountType;
@@ -17,6 +19,7 @@ import jakarta.validation.ConstraintViolation;
 import jakarta.validation.Validator;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -39,15 +42,18 @@ public class AccountServiceImpl implements AccountService {
     private final AccountRepository accountRepository;
     private final TransactionRepository transactionRepository;
     private final Validator validator;
+    private final PasswordEncoder passwordEncoder;
 
     public AccountServiceImpl(CustomerRepository customerRepository,
                                AccountRepository accountRepository,
                                TransactionRepository transactionRepository,
-                               Validator validator) {
+                               Validator validator,
+                               PasswordEncoder passwordEncoder) {
         this.customerRepository = customerRepository;
         this.accountRepository = accountRepository;
         this.transactionRepository = transactionRepository;
         this.validator = validator;
+        this.passwordEncoder = passwordEncoder;
     }
 
     @Override
@@ -63,12 +69,36 @@ public class AccountServiceImpl implements AccountService {
         );
         customerRepository.save(customer);
 
-        Account account = new Account(request.bank(), request.accountType(), customer);
+        Account account = new Account(request.bank(), request.accountType(), customer,
+                passwordEncoder.encode(request.pin()));
         accountRepository.save(account);
 
         log.info("Created account {} for customer {} {}", account.getAccountNumber(),
                 customer.getFirstName(), customer.getLastName());
         return account;
+    }
+
+    // Deliberately NOT @Transactional: getAccount() and accountRepository.save() each run in their
+    // own auto-committing transaction (Spring Data's default per-repository-method behavior). If this
+    // whole method were wrapped in one @Transactional, throwing the PIN/lockout exception below would
+    // roll back the save() that recorded the failed attempt, together with the exception that reports
+    // it — silently erasing the very lockout counter this method exists to persist.
+    @Override
+    public void authenticate(Integer accountNumber, String pin) {
+        Account account = getAccount(accountNumber);
+        if (account.isLocked()) {
+            throw new AccountLockedException(accountNumber);
+        }
+        if (!passwordEncoder.matches(pin, account.getPinHash())) {
+            account.recordFailedPinAttempt();
+            accountRepository.save(account);
+            if (account.isLocked()) {
+                throw new AccountLockedException(accountNumber);
+            }
+            throw new InvalidPinException(accountNumber, account.getRemainingPinAttempts());
+        }
+        account.recordSuccessfulPinAttempt();
+        accountRepository.save(account);
     }
 
     @Override

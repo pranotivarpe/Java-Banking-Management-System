@@ -10,6 +10,8 @@ public interface AccountService {
 
     Account createAccount(CreateAccountRequest request);
 
+    void authenticate(Integer accountNumber, String pin);
+
     Account deposit(Integer accountNumber, BigDecimal amount);
 
     Account withdraw(Integer accountNumber, BigDecimal amount);

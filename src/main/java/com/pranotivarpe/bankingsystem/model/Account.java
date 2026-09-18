@@ -20,6 +20,8 @@ import java.util.List;
 @Table(name = "accounts")
 public class Account {
 
+    private static final int MAX_FAILED_PIN_ATTEMPTS = 3;
+
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Integer accountNumber;
@@ -32,6 +34,10 @@ public class Account {
 
     private BigDecimal balance = BigDecimal.ZERO;
 
+    private String pinHash;
+    private int failedPinAttempts = 0;
+    private boolean locked = false;
+
     @ManyToOne
     @JoinColumn(name = "customer_id")
     private Customer customer;
@@ -43,11 +49,12 @@ public class Account {
         // required by JPA
     }
 
-    public Account(BankName bank, AccountType accountType, Customer customer) {
+    public Account(BankName bank, AccountType accountType, Customer customer, String pinHash) {
         this.bank = bank;
         this.accountType = accountType;
         this.customer = customer;
         this.balance = BigDecimal.ZERO;
+        this.pinHash = pinHash;
     }
 
     public Integer getAccountNumber() {
@@ -80,5 +87,28 @@ public class Account {
 
     public List<Transaction> getTransactions() {
         return transactions;
+    }
+
+    public String getPinHash() {
+        return pinHash;
+    }
+
+    public boolean isLocked() {
+        return locked;
+    }
+
+    public int getRemainingPinAttempts() {
+        return Math.max(0, MAX_FAILED_PIN_ATTEMPTS - failedPinAttempts);
+    }
+
+    public void recordFailedPinAttempt() {
+        failedPinAttempts++;
+        if (failedPinAttempts >= MAX_FAILED_PIN_ATTEMPTS) {
+            locked = true;
+        }
+    }
+
+    public void recordSuccessfulPinAttempt() {
+        failedPinAttempts = 0;
     }
 }
