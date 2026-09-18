@@ -1,10 +1,12 @@
 # 🏦 Java Banking Management System
 
-![Java](https://img.shields.io/badge/Java-SE-ED8B00?style=flat-square&logo=openjdk&logoColor=white)
+![Java](https://img.shields.io/badge/Java-17-ED8B00?style=flat-square&logo=openjdk&logoColor=white)
+![Spring Boot](https://img.shields.io/badge/Spring%20Boot-3.5-6DB33F?style=flat-square&logo=springboot&logoColor=white)
+![Spring Data JPA](https://img.shields.io/badge/Spring%20Data%20JPA-6DB33F?style=flat-square&logo=spring&logoColor=white)
 ![MySQL](https://img.shields.io/badge/MySQL-Database-4479A1?style=flat-square&logo=mysql&logoColor=white)
-![JDBC](https://img.shields.io/badge/JDBC-Connectivity-007396?style=flat-square)
+![Maven](https://img.shields.io/badge/Maven-Build-C71A36?style=flat-square&logo=apachemaven&logoColor=white)
 
-A **console-based Banking Management System** built in Java with MySQL via JDBC. Supports account creation across multiple banks, deposit/withdrawal transactions, and balance enquiries.
+A **console-based Banking Management System** built on Spring Boot and Spring Data JPA, backed by MySQL. Supports account creation across multiple banks, deposits/withdrawals, transaction history, and profile management.
 
 ---
 
@@ -13,9 +15,10 @@ A **console-based Banking Management System** built in Java with MySQL via JDBC.
 - 🏦 **Multi-Bank Support** — Open accounts with SBI, AXIS, or ICICI
 - 👤 **Account Creation** — Collect customer details (name, DOB, address, contact)
 - 💳 **Account Types** — Savings and Current accounts
-- 💰 **Transactions** — Deposit, Withdraw, and Balance Enquiry
-- 📋 **Transaction History** — View previous transaction records
-- 🔐 **PIN Security** — Account PIN protection
+- 💰 **Transactions** — Deposit and Withdraw, with balance checks
+- 📋 **Transaction History** — View past transactions, most recent first
+- ✏️ **Profile Management** — Update name, address, or contact number
+- ❌ **Account Closure**
 
 ---
 
@@ -23,21 +26,28 @@ A **console-based Banking Management System** built in Java with MySQL via JDBC.
 
 | Technology | Purpose |
 |-----------|---------|
-| Java SE | Core application logic |
+| Java 17 | Core application language |
+| Spring Boot 3.5 | Dependency injection, application bootstrap |
+| Spring Data JPA / Hibernate | ORM — object-relational mapping to MySQL |
 | MySQL | Persistent data storage |
-| JDBC | Java-to-database connectivity |
-| mysql-connector-j 8.0.33 | MySQL JDBC driver |
+| Maven | Build and dependency management |
 
 ---
 
-## Project Structure
+## Architecture
+
+Layered architecture — each package has a single responsibility:
 
 ```
-Basic-BMS/
-├── BankingSystem.java          # Main application class
-├── mysql-connector-j-8.0.33.jar  # MySQL JDBC driver
-└── bin/                        # Compiled .class files
+com.pranotivarpe.bankingsystem/
+├── model/         Customer, Account, Transaction (JPA entities) + enums
+├── repository/    Spring Data JPA repositories (no hand-written SQL)
+├── service/       Business logic — validation, transactions, exceptions
+├── exception/     Custom domain exceptions
+└── console/       CommandLineRunner-driven menu, isolated from business logic
 ```
+
+`Customer` (1) —< `Account` (1) —< `Transaction`: a customer can hold multiple accounts, each with its own transaction history.
 
 ---
 
@@ -45,34 +55,16 @@ Basic-BMS/
 
 ### Prerequisites
 
-- Java JDK 8+
-- MySQL server running
-- MySQL Connector JAR (included)
-
-### Database Setup
-
-```sql
-CREATE DATABASE banking_system;
-USE banking_system;
-
-CREATE TABLE customer (
-  AccountNumber INT PRIMARY KEY,
-  BankName VARCHAR(50),
-  FirstName VARCHAR(100),
-  LastName VARCHAR(100),
-  DOB DATE,
-  ContactNum BIGINT,
-  Address VARCHAR(255),
-  AccountType VARCHAR(20)
-);
-```
+- JDK 17+
+- Maven 3.9+
+- MySQL server running locally
 
 ### Configure credentials
 
-Database credentials are read from environment variables — never hardcoded in source.
+Credentials are read from environment variables — never hardcoded in source or committed to git.
 
 ```bash
-export DB_URL="jdbc:mysql://localhost:3306/BankingSystem"
+export DB_URL="jdbc:mysql://localhost:3306/BankingSystem?createDatabaseIfNotExist=true"
 export DB_USER="root"
 export DB_PASSWORD="your-password-here"
 ```
@@ -80,13 +72,16 @@ export DB_PASSWORD="your-password-here"
 ### Run
 
 ```bash
-# Compile
-javac -cp mysql-connector-j-8.0.33.jar BankingSystem.java
+mvn spring-boot:run
+```
 
-# Run
-java -cp .:mysql-connector-j-8.0.33.jar BankingSystem
-# Windows:
-java -cp .;mysql-connector-j-8.0.33.jar BankingSystem
+The schema (`customers`, `accounts`, `transactions`) is created automatically on first run via Hibernate.
+
+### Build a runnable jar
+
+```bash
+mvn package
+java -jar target/banking-management-system-0.1.0.jar
 ```
 
 ---
@@ -95,9 +90,9 @@ java -cp .;mysql-connector-j-8.0.33.jar BankingSystem
 
 ```
 1. Create Account
-2. Deposit
-3. Withdraw
-4. Balance Enquiry
-5. Transaction History
+2. Make Transaction (Deposit / Withdraw)
+3. View Transaction History
+4. Modify Personal Information
+5. Close Account
 6. Exit
 ```
