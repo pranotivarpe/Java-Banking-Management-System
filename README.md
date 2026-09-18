@@ -67,6 +67,16 @@ CREATE TABLE customer (
 );
 ```
 
+### Configure credentials
+
+Database credentials are read from environment variables — never hardcoded in source.
+
+```bash
+export DB_URL="jdbc:mysql://localhost:3306/BankingSystem"
+export DB_USER="root"
+export DB_PASSWORD="your-password-here"
+```
+
 ### Run
 
 ```bash
@@ -78,8 +88,6 @@ java -cp .:mysql-connector-j-8.0.33.jar BankingSystem
 # Windows:
 java -cp .;mysql-connector-j-8.0.33.jar BankingSystem
 ```
-
-> Update the database credentials (host, user, password) inside `BankingSystem.java` before running.
 
 ---
 

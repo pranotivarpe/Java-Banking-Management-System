@@ -1,0 +1,20 @@
+# Compiled class files
+bin/
+*.class
+
+# Environment / secrets
+.env
+.env.local
+*.local.properties
+
+# Build tools (added in later phases)
+target/
+build/
+
+# IDE
+.idea/
+*.iml
+.vscode/
+
+# OS
+.DS_Store

@@ -497,10 +497,18 @@ public class BankingSystem {
     }
 
     public static void main(String[] args) {
-        // Provide your database credentials
-        String url = "jdbc:mysql://localhost:3306/BankingSystem";
-        String username = "root";
-        String password = "Pranu@2001";
+        // Database credentials are read from environment variables, never hardcoded.
+        // Set DB_URL, DB_USER and DB_PASSWORD before running (see README.md).
+        String url = System.getenv().getOrDefault("DB_URL", "jdbc:mysql://localhost:3306/BankingSystem");
+        String username = System.getenv("DB_USER");
+        String password = System.getenv("DB_PASSWORD");
+
+        if (username == null || password == null) {
+            System.out.println("Missing database credentials.");
+            System.out.println("Please set the DB_USER and DB_PASSWORD environment variables before running.");
+            System.out.println("See README.md for setup instructions.");
+            return;
+        }
 
         // Establish the database connection
         try (Connection conn = DriverManager.getConnection(url, username, password)) {
