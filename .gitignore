@@ -21,3 +21,6 @@ build/
 
 # Personal interview-prep docs (not part of the public repo)
 interview-prep/
+
+# Local tooling session artifacts
+.claude/

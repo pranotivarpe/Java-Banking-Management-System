@@ -1,0 +1,32 @@
+services:
+  mysql:
+    image: mysql:8.0
+    environment:
+      MYSQL_ROOT_PASSWORD: bankingsystem
+      MYSQL_DATABASE: BankingSystem
+    ports:
+      - "3306:3306"
+    volumes:
+      - mysql-data:/var/lib/mysql
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-proot"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  app:
+    build: .
+    depends_on:
+      mysql:
+        condition: service_healthy
+    environment:
+      DB_URL: jdbc:mysql://mysql:3306/BankingSystem
+      DB_USER: root
+      DB_PASSWORD: bankingsystem
+    # Needed for interactive console I/O: `docker compose up` alone doesn't attach a TTY.
+    # Run this service with `docker compose run --rm app` instead (see README).
+    stdin_open: true
+    tty: true
+
+volumes:
+  mysql-data:

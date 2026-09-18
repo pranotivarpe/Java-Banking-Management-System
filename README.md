@@ -1,5 +1,6 @@
 # 🏦 Java Banking Management System
 
+[![CI](https://github.com/pranotivarpe/Java-Banking-Management-System/actions/workflows/ci.yml/badge.svg)](https://github.com/pranotivarpe/Java-Banking-Management-System/actions/workflows/ci.yml)
 ![Java](https://img.shields.io/badge/Java-17-ED8B00?style=flat-square&logo=openjdk&logoColor=white)
 ![Spring Boot](https://img.shields.io/badge/Spring%20Boot-3.5-6DB33F?style=flat-square&logo=springboot&logoColor=white)
 ![Spring Data JPA](https://img.shields.io/badge/Spring%20Data%20JPA-6DB33F?style=flat-square&logo=spring&logoColor=white)
@@ -37,6 +38,8 @@ A **console-based Banking Management System** built on Spring Boot and Spring Da
 | Spring Security Crypto | BCrypt password hashing for account PINs |
 | MySQL | Persistent data storage |
 | Maven | Build and dependency management |
+| Docker / Docker Compose | Containerized app + database, one-command local demo |
+| GitHub Actions | CI — builds and runs the full test suite on every push |
 
 ---
 
@@ -94,6 +97,33 @@ java -jar target/banking-management-system-0.1.0.jar
 
 ---
 
+## Run with Docker
+
+No local Java, Maven, or MySQL installation needed — just Docker.
+
+```bash
+# Start MySQL in the background
+docker compose up -d mysql
+
+# Run the console app, attached to your terminal
+docker compose run --rm app
+```
+
+> Use `docker compose run`, not `docker compose up`, for the `app` service: `up` doesn't attach an
+> interactive terminal to a specific service in a multi-service stack, and this app needs one to read your
+> menu input. `run --rm` attaches your terminal and removes the container when you exit.
+
+The app image is a multi-stage build (`Dockerfile`): a `maven` build stage compiles the jar, and a slim
+`eclipse-temurin:17-jre` stage runs it — no build tools or source ship in the final image.
+
+To stop everything and remove the database volume:
+
+```bash
+docker compose down -v
+```
+
+---
+
 ## Running Tests
 
 ```bash
@@ -108,6 +138,9 @@ mvn test
 > socket. If integration tests fail with a `ContainerLaunchException` for `testcontainers/ryuk`, run with
 > `TESTCONTAINERS_RYUK_DISABLED=true mvn test` (containers still stop on a normal JVM shutdown; this only disables
 > the crash-safety net). Not needed on Docker Desktop or in CI.
+
+The [CI workflow](.github/workflows/ci.yml) runs this exact same `mvn verify` — including the Testcontainers
+integration tests — on every push and pull request, on GitHub-hosted runners that have Docker built in.
 
 ---
 

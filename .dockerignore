@@ -1,0 +1,8 @@
+target/
+bin/
+.git/
+.env.local
+interview-prep/
+*.md
+.idea/
+.vscode/
