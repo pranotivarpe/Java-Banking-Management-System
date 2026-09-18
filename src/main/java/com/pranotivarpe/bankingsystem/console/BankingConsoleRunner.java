@@ -8,6 +8,7 @@ import com.pranotivarpe.bankingsystem.model.BankName;
 import com.pranotivarpe.bankingsystem.model.Transaction;
 import com.pranotivarpe.bankingsystem.service.AccountService;
 import com.pranotivarpe.bankingsystem.service.CreateAccountRequest;
+import com.pranotivarpe.bankingsystem.service.InterestApplicationResult;
 import org.springframework.boot.CommandLineRunner;
 import org.springframework.stereotype.Component;
 
@@ -37,7 +38,7 @@ public class BankingConsoleRunner implements CommandLineRunner {
         System.out.println("- - - - - - - - - - - - - - - - - - - - - - - - - - - - ");
 
         int choice = 0;
-        while (choice != 6) {
+        while (choice != 8) {
             printMenu();
             choice = readInt("Choose an option: ");
 
@@ -45,10 +46,12 @@ public class BankingConsoleRunner implements CommandLineRunner {
                 switch (choice) {
                     case 1 -> createAccount();
                     case 2 -> makeTransaction();
-                    case 3 -> viewTransactionHistory();
-                    case 4 -> updatePersonalInfo();
-                    case 5 -> closeAccount();
-                    case 6 -> System.out.println("Thank you for using our services :)");
+                    case 3 -> transferFunds();
+                    case 4 -> viewTransactionHistory();
+                    case 5 -> updatePersonalInfo();
+                    case 6 -> closeAccount();
+                    case 7 -> adminMenu();
+                    case 8 -> System.out.println("Thank you for using our services :)");
                     default -> System.out.println("Invalid choice.");
                 }
             } catch (BankingException e) {
@@ -61,10 +64,12 @@ public class BankingConsoleRunner implements CommandLineRunner {
         System.out.println();
         System.out.println("1. Create Account");
         System.out.println("2. Make Transaction");
-        System.out.println("3. View Transaction History");
-        System.out.println("4. Modify Personal Information");
-        System.out.println("5. Close Account");
-        System.out.println("6. Exit");
+        System.out.println("3. Transfer Funds");
+        System.out.println("4. View Transaction History");
+        System.out.println("5. Modify Personal Information");
+        System.out.println("6. Close Account");
+        System.out.println("7. Admin Menu");
+        System.out.println("8. Exit");
     }
 
     private void createAccount() {
@@ -113,6 +118,55 @@ public class BankingConsoleRunner implements CommandLineRunner {
         };
 
         System.out.println("New balance: " + account.getBalance());
+    }
+
+    private void transferFunds() {
+        int fromAccountNumber = readInt("Your account number: ");
+        accountService.authenticate(fromAccountNumber, readPin());
+        int toAccountNumber = readInt("Transfer to account number: ");
+        BigDecimal amount = readAmount("Amount: ");
+
+        Account fromAccount = accountService.transfer(fromAccountNumber, toAccountNumber, amount);
+        System.out.println("Transfer complete. New balance: " + fromAccount.getBalance());
+    }
+
+    private void adminMenu() {
+        System.out.println();
+        System.out.println("--- Admin Menu ---");
+        System.out.println("1. View All Accounts");
+        System.out.println("2. Search Accounts by Last Name");
+        System.out.println("3. Apply Monthly Interest (Savings Accounts)");
+        System.out.println("4. Back to Main Menu");
+        int choice = readInt("Choice: ");
+
+        switch (choice) {
+            case 1 -> printAccountList(accountService.getAllAccounts());
+            case 2 -> printAccountList(accountService.searchByLastName(readLine("Last name: ")));
+            case 3 -> applyInterest();
+            case 4 -> { }
+            default -> System.out.println("Invalid choice!");
+        }
+    }
+
+    private void applyInterest() {
+        InterestApplicationResult result = accountService.applyMonthlyInterestToSavingsAccounts();
+        System.out.println("Credited interest to " + result.accountsCredited()
+                + " savings account(s). Total paid: " + result.totalInterestPaid());
+    }
+
+    private void printAccountList(List<Account> accounts) {
+        if (accounts.isEmpty()) {
+            System.out.println("No matching accounts found.");
+            return;
+        }
+        System.out.println("Acct#  Bank   Type     Holder                Balance");
+        System.out.println("-----------------------------------------------------");
+        for (Account account : accounts) {
+            System.out.printf("%-6d %-6s %-8s %-20s %s%n",
+                    account.getAccountNumber(), account.getBank(), account.getAccountType(),
+                    account.getCustomer().getFirstName() + " " + account.getCustomer().getLastName(),
+                    account.getBalance());
+        }
     }
 
     private void viewTransactionHistory() {

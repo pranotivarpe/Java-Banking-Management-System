@@ -24,6 +24,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
+import java.math.RoundingMode;
 import java.time.LocalDate;
 import java.time.Period;
 import java.util.List;
@@ -37,6 +38,8 @@ public class AccountServiceImpl implements AccountService {
 
     private static final int MINIMUM_AGE_YEARS = 18;
     private static final BigDecimal MINIMUM_SAVINGS_BALANCE = new BigDecimal("500.00");
+    private static final BigDecimal ANNUAL_SAVINGS_INTEREST_RATE = new BigDecimal("0.04");
+    private static final int MONTHS_PER_YEAR = 12;
 
     private final CustomerRepository customerRepository;
     private final AccountRepository accountRepository;
@@ -117,18 +120,39 @@ public class AccountServiceImpl implements AccountService {
     public Account withdraw(Integer accountNumber, BigDecimal amount) {
         validateAmount(amount);
         Account account = getAccount(accountNumber);
-        if (account.getBalance().compareTo(amount) < 0) {
-            throw new InsufficientFundsException(accountNumber, account.getBalance(), amount);
-        }
-        BigDecimal balanceAfterWithdrawal = account.getBalance().subtract(amount);
-        if (account.getAccountType() == AccountType.SAVING
-                && balanceAfterWithdrawal.compareTo(MINIMUM_SAVINGS_BALANCE) < 0) {
-            throw new MinimumBalanceViolationException(accountNumber, MINIMUM_SAVINGS_BALANCE);
-        }
+        requireSufficientFunds(account, amount);
+        requireMinimumBalanceMaintained(account, amount);
         account.debit(amount);
         transactionRepository.save(new Transaction(account, TransactionType.WITHDRAWAL, amount));
         log.info("Withdrew {} from account {}. New balance: {}", amount, accountNumber, account.getBalance());
         return account;
+    }
+
+    // PIN authentication happens as a separate top-level call from the console before this method runs
+    // (same reasoning as authenticate() in Phase 3): keeping it out of this @Transactional method means
+    // a debit/credit failure here can't accidentally roll back an unrelated PIN-lockout write.
+    @Override
+    @Transactional
+    public Account transfer(Integer fromAccountNumber, Integer toAccountNumber, BigDecimal amount) {
+        if (fromAccountNumber.equals(toAccountNumber)) {
+            throw new InvalidAmountException("Cannot transfer to the same account");
+        }
+        validateAmount(amount);
+
+        Account from = getAccount(fromAccountNumber);
+        Account to = getAccount(toAccountNumber);
+
+        requireSufficientFunds(from, amount);
+        requireMinimumBalanceMaintained(from, amount);
+
+        from.debit(amount);
+        to.credit(amount);
+
+        transactionRepository.save(new Transaction(from, TransactionType.TRANSFER_OUT, amount, toAccountNumber));
+        transactionRepository.save(new Transaction(to, TransactionType.TRANSFER_IN, amount, fromAccountNumber));
+
+        log.info("Transferred {} from account {} to account {}", amount, fromAccountNumber, toAccountNumber);
+        return from;
     }
 
     @Override
@@ -141,6 +165,39 @@ public class AccountServiceImpl implements AccountService {
     public List<Transaction> getTransactionHistory(Integer accountNumber) {
         getAccount(accountNumber); // ensures the account exists before querying history
         return transactionRepository.findByAccount_AccountNumberOrderByTransactionDateDesc(accountNumber);
+    }
+
+    @Override
+    public List<Account> getAllAccounts() {
+        return accountRepository.findAll();
+    }
+
+    @Override
+    public List<Account> searchByLastName(String lastName) {
+        return accountRepository.findByCustomer_LastNameContainingIgnoreCase(lastName);
+    }
+
+    @Override
+    @Transactional
+    public InterestApplicationResult applyMonthlyInterestToSavingsAccounts() {
+        List<Account> savingsAccounts = accountRepository.findByAccountType(AccountType.SAVING);
+        int accountsCredited = 0;
+        BigDecimal totalInterestPaid = BigDecimal.ZERO;
+
+        for (Account account : savingsAccounts) {
+            BigDecimal monthlyInterest = account.getBalance()
+                    .multiply(ANNUAL_SAVINGS_INTEREST_RATE)
+                    .divide(BigDecimal.valueOf(MONTHS_PER_YEAR), 2, RoundingMode.HALF_UP);
+            if (monthlyInterest.compareTo(BigDecimal.ZERO) > 0) {
+                account.credit(monthlyInterest);
+                transactionRepository.save(new Transaction(account, TransactionType.INTEREST, monthlyInterest));
+                accountsCredited++;
+                totalInterestPaid = totalInterestPaid.add(monthlyInterest);
+            }
+        }
+
+        log.info("Applied monthly interest to {} savings account(s), total {}", accountsCredited, totalInterestPaid);
+        return new InterestApplicationResult(accountsCredited, totalInterestPaid);
     }
 
     @Override
@@ -185,6 +242,20 @@ public class AccountServiceImpl implements AccountService {
         Account account = getAccount(accountNumber);
         accountRepository.delete(account);
         log.info("Closed account {}", accountNumber);
+    }
+
+    private void requireSufficientFunds(Account account, BigDecimal amount) {
+        if (account.getBalance().compareTo(amount) < 0) {
+            throw new InsufficientFundsException(account.getAccountNumber(), account.getBalance(), amount);
+        }
+    }
+
+    private void requireMinimumBalanceMaintained(Account account, BigDecimal amountLeavingAccount) {
+        BigDecimal balanceAfter = account.getBalance().subtract(amountLeavingAccount);
+        if (account.getAccountType() == AccountType.SAVING
+                && balanceAfter.compareTo(MINIMUM_SAVINGS_BALANCE) < 0) {
+            throw new MinimumBalanceViolationException(account.getAccountNumber(), MINIMUM_SAVINGS_BALANCE);
+        }
     }
 
     private void validateAmount(BigDecimal amount) {

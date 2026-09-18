@@ -31,6 +31,9 @@ public class Transaction {
 
     private BigDecimal amount;
 
+    // Only set for TRANSFER_OUT/TRANSFER_IN: the account on the other side of the transfer.
+    private Integer counterpartyAccountNumber;
+
     @CreationTimestamp
     private LocalDateTime transactionDate;
 
@@ -39,9 +42,15 @@ public class Transaction {
     }
 
     public Transaction(Account account, TransactionType transactionType, BigDecimal amount) {
+        this(account, transactionType, amount, null);
+    }
+
+    public Transaction(Account account, TransactionType transactionType, BigDecimal amount,
+                        Integer counterpartyAccountNumber) {
         this.account = account;
         this.transactionType = transactionType;
         this.amount = amount;
+        this.counterpartyAccountNumber = counterpartyAccountNumber;
     }
 
     public Long getId() {
@@ -62,5 +71,9 @@ public class Transaction {
 
     public LocalDateTime getTransactionDate() {
         return transactionDate;
+    }
+
+    public Integer getCounterpartyAccountNumber() {
+        return counterpartyAccountNumber;
     }
 }

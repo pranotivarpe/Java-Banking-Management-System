@@ -16,9 +16,17 @@ public interface AccountService {
 
     Account withdraw(Integer accountNumber, BigDecimal amount);
 
+    Account transfer(Integer fromAccountNumber, Integer toAccountNumber, BigDecimal amount);
+
     Account getAccount(Integer accountNumber);
 
     List<Transaction> getTransactionHistory(Integer accountNumber);
+
+    List<Account> getAllAccounts();
+
+    List<Account> searchByLastName(String lastName);
+
+    InterestApplicationResult applyMonthlyInterestToSavingsAccounts();
 
     Account updateFirstName(Integer accountNumber, String firstName);
 

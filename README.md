@@ -21,6 +21,9 @@ A **console-based Banking Management System** built on Spring Boot and Spring Da
 - ✏️ **Profile Management** — Update name, address, or contact number
 - ❌ **Account Closure**
 - 🔐 **PIN Security** — BCrypt-hashed 4-digit PIN required for every account operation, with account lockout after 3 failed attempts
+- 🔁 **Fund Transfers** — Move money between accounts atomically, with minimum-balance rules enforced
+- 📈 **Savings Interest** — Monthly interest credited to savings accounts, both on demand and via a scheduled job
+- 🛠️ **Admin Console** — View all accounts, search by customer last name, trigger interest runs
 
 ---
 
@@ -47,6 +50,7 @@ com.pranotivarpe.bankingsystem/
 ├── repository/    Spring Data JPA repositories (no hand-written SQL)
 ├── service/       Business logic — validation, transactions, exceptions
 ├── security/      BCrypt PasswordEncoder configuration
+├── scheduler/     @Scheduled monthly interest job
 ├── exception/     Custom domain exceptions
 └── console/       CommandLineRunner-driven menu, isolated from business logic
 ```
@@ -95,8 +99,10 @@ java -jar target/banking-management-system-0.1.0.jar
 ```
 1. Create Account
 2. Make Transaction (Deposit / Withdraw)
-3. View Transaction History
-4. Modify Personal Information
-5. Close Account
-6. Exit
+3. Transfer Funds
+4. View Transaction History
+5. Modify Personal Information
+6. Close Account
+7. Admin Menu (view all / search / apply interest)
+8. Exit
 ```
