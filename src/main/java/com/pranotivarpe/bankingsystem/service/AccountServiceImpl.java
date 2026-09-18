@@ -2,42 +2,58 @@ package com.pranotivarpe.bankingsystem.service;
 
 import com.pranotivarpe.bankingsystem.exception.AccountNotFoundException;
 import com.pranotivarpe.bankingsystem.exception.InsufficientFundsException;
+import com.pranotivarpe.bankingsystem.exception.InvalidAccountDataException;
 import com.pranotivarpe.bankingsystem.exception.InvalidAmountException;
+import com.pranotivarpe.bankingsystem.exception.MinimumBalanceViolationException;
 import com.pranotivarpe.bankingsystem.model.Account;
+import com.pranotivarpe.bankingsystem.model.AccountType;
 import com.pranotivarpe.bankingsystem.model.Customer;
 import com.pranotivarpe.bankingsystem.model.Transaction;
 import com.pranotivarpe.bankingsystem.model.TransactionType;
 import com.pranotivarpe.bankingsystem.repository.AccountRepository;
 import com.pranotivarpe.bankingsystem.repository.CustomerRepository;
 import com.pranotivarpe.bankingsystem.repository.TransactionRepository;
+import jakarta.validation.ConstraintViolation;
+import jakarta.validation.Validator;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
+import java.time.LocalDate;
+import java.time.Period;
 import java.util.List;
+import java.util.Set;
+import java.util.stream.Collectors;
 
 @Service
 public class AccountServiceImpl implements AccountService {
 
     private static final Logger log = LoggerFactory.getLogger(AccountServiceImpl.class);
 
+    private static final int MINIMUM_AGE_YEARS = 18;
+    private static final BigDecimal MINIMUM_SAVINGS_BALANCE = new BigDecimal("500.00");
+
     private final CustomerRepository customerRepository;
     private final AccountRepository accountRepository;
     private final TransactionRepository transactionRepository;
+    private final Validator validator;
 
     public AccountServiceImpl(CustomerRepository customerRepository,
                                AccountRepository accountRepository,
-                               TransactionRepository transactionRepository) {
+                               TransactionRepository transactionRepository,
+                               Validator validator) {
         this.customerRepository = customerRepository;
         this.accountRepository = accountRepository;
         this.transactionRepository = transactionRepository;
+        this.validator = validator;
     }
 
     @Override
     @Transactional
     public Account createAccount(CreateAccountRequest request) {
+        validateRequest(request);
         Customer customer = new Customer(
                 request.firstName(),
                 request.lastName(),
@@ -73,6 +89,11 @@ public class AccountServiceImpl implements AccountService {
         Account account = getAccount(accountNumber);
         if (account.getBalance().compareTo(amount) < 0) {
             throw new InsufficientFundsException(accountNumber, account.getBalance(), amount);
+        }
+        BigDecimal balanceAfterWithdrawal = account.getBalance().subtract(amount);
+        if (account.getAccountType() == AccountType.SAVING
+                && balanceAfterWithdrawal.compareTo(MINIMUM_SAVINGS_BALANCE) < 0) {
+            throw new MinimumBalanceViolationException(accountNumber, MINIMUM_SAVINGS_BALANCE);
         }
         account.debit(amount);
         transactionRepository.save(new Transaction(account, TransactionType.WITHDRAWAL, amount));
@@ -139,6 +160,24 @@ public class AccountServiceImpl implements AccountService {
     private void validateAmount(BigDecimal amount) {
         if (amount == null || amount.compareTo(BigDecimal.ZERO) <= 0) {
             throw new InvalidAmountException("Amount must be greater than zero");
+        }
+        if (amount.scale() > 2) {
+            throw new InvalidAmountException("Amount cannot have more than 2 decimal places");
+        }
+    }
+
+    private void validateRequest(CreateAccountRequest request) {
+        Set<ConstraintViolation<CreateAccountRequest>> violations = validator.validate(request);
+        if (!violations.isEmpty()) {
+            throw new InvalidAccountDataException(violations.stream()
+                    .map(ConstraintViolation::getMessage)
+                    .collect(Collectors.toSet()));
+        }
+
+        int age = Period.between(request.dob(), LocalDate.now()).getYears();
+        if (age < MINIMUM_AGE_YEARS) {
+            throw new InvalidAccountDataException(
+                    "Account holder must be at least " + MINIMUM_AGE_YEARS + " years old");
         }
     }
 }

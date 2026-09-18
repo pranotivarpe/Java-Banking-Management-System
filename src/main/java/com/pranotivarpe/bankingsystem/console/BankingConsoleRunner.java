@@ -1,7 +1,6 @@
 package com.pranotivarpe.bankingsystem.console;
 
-import com.pranotivarpe.bankingsystem.exception.AccountNotFoundException;
-import com.pranotivarpe.bankingsystem.exception.InsufficientFundsException;
+import com.pranotivarpe.bankingsystem.exception.BankingException;
 import com.pranotivarpe.bankingsystem.exception.InvalidAmountException;
 import com.pranotivarpe.bankingsystem.model.Account;
 import com.pranotivarpe.bankingsystem.model.AccountType;
@@ -52,7 +51,7 @@ public class BankingConsoleRunner implements CommandLineRunner {
                     case 6 -> System.out.println("Thank you for using our services :)");
                     default -> System.out.println("Invalid choice.");
                 }
-            } catch (AccountNotFoundException | InsufficientFundsException | InvalidAmountException e) {
+            } catch (BankingException e) {
                 System.out.println("Error: " + e.getMessage());
             }
         }
