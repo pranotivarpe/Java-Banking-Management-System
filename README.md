@@ -7,8 +7,11 @@
 ![Spring Security](https://img.shields.io/badge/Spring%20Security-6DB33F?style=flat-square&logo=springsecurity&logoColor=white)
 ![MySQL](https://img.shields.io/badge/MySQL-Database-4479A1?style=flat-square&logo=mysql&logoColor=white)
 ![Maven](https://img.shields.io/badge/Maven-Build-C71A36?style=flat-square&logo=apachemaven&logoColor=white)
+![License](https://img.shields.io/badge/License-MIT-yellow.svg?style=flat-square)
 
 A **console-based Banking Management System** built on Spring Boot and Spring Data JPA, backed by MySQL. Supports account creation across multiple banks, deposits/withdrawals, transaction history, and profile management.
+
+![Demo session: create account, deposit, view history, exit](demo.png)
 
 ---
 
@@ -59,6 +62,84 @@ com.pranotivarpe.bankingsystem/
 ```
 
 `Customer` (1) —< `Account` (1) —< `Transaction`: a customer can hold multiple accounts, each with its own transaction history.
+
+```mermaid
+flowchart LR
+    User([User at terminal]) --> Console["console<br/>BankingConsoleRunner"]
+    Console --> Service["service<br/>AccountService"]
+    Service --> Repo["repository<br/>Spring Data JPA"]
+    Service --> Security["security<br/>BCrypt PasswordEncoder"]
+    Scheduler["scheduler<br/>@Scheduled interest job"] --> Service
+    Repo --> DB[("MySQL")]
+```
+
+```mermaid
+erDiagram
+    CUSTOMER ||--o{ ACCOUNT : has
+    ACCOUNT ||--o{ TRANSACTION : records
+    CUSTOMER {
+        long id
+        string firstName
+        string lastName
+        date dob
+        long contactNum
+    }
+    ACCOUNT {
+        int accountNumber PK
+        string bank
+        string accountType
+        decimal balance
+        string pinHash
+        int failedPinAttempts
+        boolean locked
+    }
+    TRANSACTION {
+        long id
+        string transactionType
+        decimal amount
+        int counterpartyAccountNumber
+        datetime transactionDate
+    }
+```
+
+---
+
+## Design Decisions
+
+Short version of the reasoning behind the choices that aren't obvious from the code alone:
+
+- **Layered architecture over one class.** `console`, `service`, `repository` each have one reason to
+  change — the console layer knows nothing about persistence, the service layer knows nothing about
+  `Scanner`. This started as a single 563-line file with everything mixed together.
+- **Spring Data JPA over raw JDBC.** No hand-written SQL for CRUD; derived query methods (e.g.
+  `findByCustomer_LastNameContainingIgnoreCase`) are generated from the method name.
+- **`BigDecimal`, never `double`/`int`, for money.** `double` can't represent decimal fractions exactly;
+  the original code's `int` balance overflowed on a 10-digit phone number during testing — a real bug this
+  choice prevents entirely.
+- **Auto-increment account numbers, not `SELECT MAX(id)+1`.** The original approach has a race condition
+  under concurrent account creation; delegating to the database's own identity column doesn't.
+- **PIN authentication as a separate step, not a parameter buried in every method.** Keeping it out of
+  each business method's own `@Transactional` boundary avoids a real bug hit during development: a failed
+  PIN save getting silently rolled back together with the exception that reported it.
+- **`spring-security-crypto` alone, not the full Spring Security starter.** This app has no web layer to
+  secure — only BCrypt hashing is needed, so only that module is pulled in.
+- **Testcontainers over H2 for integration tests.** Tests run against the exact MySQL engine the app
+  deploys on, not an in-memory approximation with different SQL semantics.
+- **An explicit daemon `TaskScheduler` bean.** Spring's default `@Scheduled` executor thread is
+  non-daemon, which silently prevented the JVM from exiting after the console loop finished — found via a
+  `kill -3` thread dump, not a guess.
+
+### Known limitations (deliberate scope, not oversights)
+
+- `spring.jpa.hibernate.ddl-auto=update` is convenient for a solo project but not production-safe; a real
+  system would use versioned migrations (Flyway/Liquibase) with `ddl-auto=validate`.
+- No optimistic locking (`@Version`) on `Account` — two concurrent withdrawals on the same account could
+  both read the same balance before either writes. `@Transactional` protects atomicity within one request,
+  not cross-request races on the same row.
+- Account lockout after 3 failed PINs is permanent — there's no unlock flow (would need an admin action or
+  a time-based cooldown in a real system).
+- The Admin Menu has no authentication of its own, separate from customer PIN auth — fine for a
+  single-user local console app, not for anything with more than one trust level.
 
 ---
 
@@ -156,3 +237,9 @@ integration tests — on every push and pull request, on GitHub-hosted runners t
 7. Admin Menu (view all / search / apply interest)
 8. Exit
 ```
+
+---
+
+## License
+
+[MIT](LICENSE)
